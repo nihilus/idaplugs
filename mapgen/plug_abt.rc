@@ -1,0 +1,7 @@
+
+#include "plg_rsrc.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+IDB_ABOUTSPLASH BITMAP "..\\..\\RCE\\servil_about.bmp"

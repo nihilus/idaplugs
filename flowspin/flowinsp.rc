@@ -1,0 +1,41 @@
+
+#include "plg_rsrc.h"
+
+LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_US
+#pragma code_page(1252)
+
+#ifdef USE_VS_VERSION_INFO
+VS_VERSION_INFO VERSIONINFO
+	FILEVERSION PLUGINVERSION
+	PRODUCTVERSION PLUGINVERSION
+	FILEFLAGSMASK 0x3fL
+#ifdef _DEBUG
+	FILEFLAGS 0x1L // Debug
+#else
+	FILEFLAGS 0x2L // PreRelease
+#endif
+	FILEOS 0x00004L // Win32
+	FILETYPE 0x2L   // DLL
+	FILESUBTYPE 0x1L // #N/A
+	BEGIN
+		BLOCK "StringFileInfo"
+		BEGIN
+			BLOCK "040904b0"
+			BEGIN
+				VALUE "CompanyName", "semteksoft corporation, inc.\0"
+				VALUE "FileDescription", PLUGINNAME "\0"
+				VALUE "FileVersion", PLUGINVERSIONTEXT "\0"
+				VALUE "InternalName", PLUGIN "\0"
+				VALUE "OriginalFilename", PLUGIN "." MODEXT "\0"
+				VALUE "ProductName", PLUGINNAME "\0"
+				VALUE "ProductVersion", PLUGINVERSIONTEXT "\0"
+				VALUE "LegalCopyright", "© 2005-2008 servil\0"
+				VALUE "Comments", "IDA API V" SDK "\0"
+			END
+		END
+		BLOCK "VarFileInfo"
+		BEGIN
+			VALUE "Translation", 0x409, 1200
+		END
+	END
+#endif // USE_VS_VERSION_INFO
