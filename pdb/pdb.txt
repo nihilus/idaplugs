@@ -1,0 +1,145 @@
+
+This is yet another extension built on original Datarescue`s PDB plugin,
+(c) servil 2006-2008
+
+Main enhancements from original plugin:
+* Integrates advantages of Microsoft Debug Information Accessor (DIA). The
+  interface provided by DIA offers considerably more complete description of
+  executable against DbgHelp(ImagHlp) API. If DIA component is not installed
+  DbgHelp's engine is used (use newest version possible to achieve best results).
+* Preserved names mangling (ida still shows C prototype where full ida typeinfo
+  can't be successfully set).
+* Replication of complex types (struct, enum) and typedefs from PDB.
+* Scoped UDT members handled (inherited members and nested typedefs, structs
+  and enums).
+* Exact format to global static data symbols and static struct members, forced
+  code at function start (extern symbols format preserved).
+* Full ida typeinfo to static symbols and struct members.
+* Names, exact format and full ida typeinfo to function arguments and local
+  symbols stored at frame, recursive traversal all nested sub-blocks of function
+  (with DIA only). Supported (both top and bottom) ebp- and esp-based frame
+  models, support for register variables and params was removed during testing
+  (see known problems and anomalies/#3).
+* Source code import to idabase where file accessible (as anterior lines).
+* Foreign program databases support for importing data types only. Selective
+  filtering of unwanted types is offered before own storage. For this feature
+  call the plugin with argument 2 (use IDC command or edit plugins.cfg to do
+  that).
+* Alots of minor adjustments not worth to mention.
+* No UI (lazy) - always apply all features.
+
+BUILD NOTES:
+------------
+The source code is tuned for MSVC 6 or newer. I don't provide any makefiles
+(lazy) - build from command line with usual plugin flags. I didnot care for
+portabilty, but source may be available for other C++ compilers after
+appropriate adjustments (essential requirement is target platform Win32 PE
+supported). To compile you need:
+* all the files in this package extracted ofcourse
+* ofcourse IDA SDK for target version being executed on
+* PCRE library compiled (ftp://ftp.csx.cam.ac.uk/pub/software/programming/pcre/)
+* STL implementation with corresponding iostreams library. I went with STLport
+  from scratch, so not tested with stdlib: if standard violated, use STLport
+  too (http://stlport.sourceforge.net/)
+* boost library (http://boost.org/) - only for headers
+* Microsoft Debugging Tools for Windows (http://www.microsoft.com/ddk/debugging/)
+  or just for DbgHelp.h header (note: header file out of PSDK is old for
+  backward compatibility with PSDK DbgHelp version)
+* Microsoft DIA SDK (part of Visual Studio distribution since VS.Net 7)
+* Windows Platform SDK (subset from Visual Studio should be sufficient - if not,
+  go with PSDK at http://www.microsoft.com/msdownload/platformsdk/sdkupdate/)
+* ATL 3.0 or newer (part of VS) - only for headers
+The source is tuned for IDA 5.2. It still probably works on older versions but
+backward compatibility is not checked anymore. For missing files or other
+unresolvable portability problems mail me to <servil@gmx.net>.
+
+KNOWN PROBLEMS AND ANOMALIES:
+-----------------------------
+All listed issues encountered with DbgHelp v6.3.0017.0 (DbgBuild.040415-1850)
+and MS DIA component v7.10.3077.0, and may or not be handled differently with
+newer versions.
+
+1. Names length: (not only) C++ template-specialized names can easily trespass
+IDA's MAXNAMESIZE limit. To prevent IDA crashes, all long names are truncated
+to MAXNAMESIZE-1 before passing to kernel, however truncated names lose
+demangling ability.
+
+2. PDB format design probably keeps old types in pdb file, unfortunatelly
+multiple definitions are not versioned nor timestamped any way, thus the plugin
+may get two or more diferring definitions of same type. This may cause missing
+some elements in complex types or typedefs if plugin creates outdated type.
+This problem is partially handled on both DbgHelp and DIA interfaces, but no
+warranty is provided by the plugin (workaround works correctly only if
+definitions are passed in same order as they were created - newest at last), to
+ensure old types won't be messed with those new, delete existing pdb file
+before actual build if sourcecode is available.
+
+3. Local register variables (LocationType=LocIsEnregistered) have
+indeterminable load (first use) address and duration. I didnot find a
+satisfactory rule to tell exactly where respective register is firstly used in
+context of it's function scope (register variables are denoted in function
+comment instead creating potentionally confusing regvar). This problem concerns
+both DbgHelp and DIA interface.
+
+4. Not all types can be stored to IDAbase due to invalid characters (such as
+templated specializations etc.). Missing wild-name types will invalidate all
+IDA typedefs built on them, I didnot make typeinfo validity check before
+storing to IDA but unresolvable typeinfos produce 'invalid' print-out - plugin
+makes no character substitutions for wild names.
+
+5. Nested enums (and maybe other types) are placed to global namespace without
+notification or full name qualification, I don't know if that's a bug or
+intention, this behaviour might be prevented by setting specific SYMOPT_....
+flag or using specific DbgHelp library version. Unfortunately TI_GET_NESTED
+value doesnot trustworthly tell if name belongs to a local scope (I've seen
+this flag set for true global enums too on some executables). This problem is
+partly handled by no filtering but rather deleting global enum if constant
+name conflicts occur. This problem wasnot observed with DIA so far.
+
+6. Static variables defined in local function scope seem be marked as
+register-relative locals with offset(address)=0. This is not good because makes
+me unable to safely distinguish between static and local variables. Because of
+estimation zero BP offset shouldnot be used in function body at all, I have
+decided rather to treat all 0-offseted local symbols as local static variables
+with unknown address at the cost of discarding eventual SP-related locals.
+Anyhow I don't have knowledge to retrieve true address for these symbols atm.
+Local static variables should be handled correctly if DIA interface is available.
+
+7. UDT members with invalid name or type are not created, thus their space may
+be undefined. This may cause problems where trying to apply owner UDT as pure
+type (such UDT's are commented as incomplete) - however the UDT is named and
+can be used as pointer or reference.
+
+8. Not always all struct members are retrieved by SymGetTypeInfo(...). I have
+noticed the API sometimes raises access violation, I don't know cause but it
+may hear on private or non-public class members. such structures and enums are
+commented as 'incomplete'. This problem only concerns to DbgHelp API interface.
+
+
+
+
+Updated 02/04/08:
+Due to new features (see below) this version may induce IDA more or less trend
+to crash at load of highly complex program databases, so although tested quite
+alot, get absolutely no guarantee for successfull load.
+- more safe, all typeinfo recursion deadlocks (hopefully) definitely resolved.
+  stack overflow on types infinite recursion remains the most impending cause
+  of crash at load time
+- more aggresive types creation, refused structs and enums (mostly due to long
+  or invalid name) created in til instead, til-only types specifics:
+    - not accessible from structs/enums list but from ida typeinfo only
+    - UDTs always have default module alignment and can only accept members
+      in ascending offset order atm. (all these may be handled in future)
+    - can have any name (as for character set and length)
+    - can contain or refer any type of any name
+    - UDTs (unlike native IDA structs) can define bitfields
+  refused types created with substituted name despite
+- all types stored to til now are accessible from UI (can be used as func
+  params etc.) and are listed in local types viewer also (IDA >=5.2)
+- more aggresive long names passing (only truncated at places when ida
+  encountered crashing), newer IDA versions may be more resistent against
+  too-long names. Too long names are second reason to force IDA crash so this
+  change is experimental.
+- DbgHelp interface still kept in sync but not tested anymore, DIA recommended
+- compatibility with older IDA versions (up to 4.8) still retained, but not
+  tested anymore
